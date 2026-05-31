@@ -1,0 +1,10 @@
+# Paper Plane AI requirements
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+groq>=0.9.0
+pillow>=10.0.0
+reportlab>=4.0.0
+youtube-transcript-api>=0.6.0
+
+# studio.py GUI — uses tkinter (Python stdlib, no install needed)
+# pillow is already listed above (needed for image preview in studio)

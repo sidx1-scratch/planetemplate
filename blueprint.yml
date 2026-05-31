@@ -1,0 +1,140 @@
+name: 🛩 Paper Plane Blueprint
+
+on:
+  workflow_dispatch:
+    inputs:
+      web_url:
+        description: "Webpage URL (optional)"
+        required: false
+        default: ""
+      youtube_id:
+        description: "YouTube video ID (optional)"
+        required: false
+        default: ""
+      file_content:
+        description: "Raw text input (optional)"
+        required: false
+        default: ""
+      theme:
+        description: "Plane skin theme"
+        required: false
+        default: "default"
+        type: choice
+        options:
+          - default
+          - fighter_jet
+          - military
+          - flame
+          - ocean
+          - jungle
+          - arctic
+          - galaxy
+          - bumblebee
+          - patriot
+          - sakura
+          - lightning
+          - racing
+          - graffiti
+          - skull
+          - rust
+          - rainbow
+      model:
+        description: "Groq model"
+        required: false
+        default: "llama3-70b-8192"
+        type: choice
+        options:
+          - llama3-70b-8192
+          - llama3-8b-8192
+          - gemma2-9b-it
+          - mixtral-8x7b-32768
+      image_b64:
+        description: "Custom image (base64-encoded, optional)"
+        required: false
+        default: ""
+      image_name:
+        description: "Filename for the custom image (e.g. logo.png)"
+        required: false
+        default: "custom_image.png"
+
+jobs:
+  generate:
+    name: Generate Blueprint
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── decode custom image if provided ──────────────────────────────────
+      - name: Decode custom image
+        if: ${{ inputs.image_b64 != '' }}
+        run: |
+          echo "${{ inputs.image_b64 }}" | base64 -d > /tmp/${{ inputs.image_name }}
+          echo "IMAGE_ARG=--image /tmp/${{ inputs.image_name }}" >> $GITHUB_ENV
+
+      - name: No custom image
+        if: ${{ inputs.image_b64 == '' }}
+        run: echo "IMAGE_ARG=" >> $GITHUB_ENV
+
+      # ── write file input if provided ─────────────────────────────────────
+      - name: Write file input
+        if: ${{ inputs.file_content != '' }}
+        run: |
+          printf '%s' "${{ inputs.file_content }}" > /tmp/input_file.txt
+          echo "FILE_ARG=--file /tmp/input_file.txt" >> $GITHUB_ENV
+
+      - name: No file input
+        if: ${{ inputs.file_content == '' }}
+        run: echo "FILE_ARG=" >> $GITHUB_ENV
+
+      # ── build args and run ───────────────────────────────────────────────
+      - name: Build CLI args
+        run: |
+          ARGS=""
+          [ -n "${{ inputs.web_url }}"    ] && ARGS="$ARGS --web '${{ inputs.web_url }}'"
+          [ -n "${{ inputs.youtube_id }}" ] && ARGS="$ARGS --youtube '${{ inputs.youtube_id }}'"
+          ARGS="$ARGS $FILE_ARG $IMAGE_ARG"
+          ARGS="$ARGS --theme ${{ inputs.theme }} --model ${{ inputs.model }}"
+          echo "PLANE_ARGS=$ARGS" >> $GITHUB_ENV
+
+      - name: Generate blueprint
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: eval python main.py $PLANE_ARGS
+
+      # ── upload artifacts ─────────────────────────────────────────────────
+      - name: Upload PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: blueprint-${{ inputs.theme }}-pdf
+          path: output.pdf
+          retention-days: 30
+
+      - name: Upload PNG preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: blueprint-${{ inputs.theme }}-preview
+          path: preview.png
+          retention-days: 30
+
+      - name: Job summary
+        if: success()
+        run: |
+          echo "## ✈ Blueprint Generated" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Theme | ${{ inputs.theme }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Model | ${{ inputs.model }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Web URL | ${{ inputs.web_url || '—' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| YouTube | ${{ inputs.youtube_id || '—' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| File | ${{ inputs.file_content != '' && 'provided' || '—' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Custom image | ${{ inputs.image_b64 != '' && inputs.image_name || '—' }} |" >> $GITHUB_STEP_SUMMARY
