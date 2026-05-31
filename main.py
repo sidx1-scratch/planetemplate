@@ -888,7 +888,7 @@ def _draw_cad_legend(d, P):
                      ("mountain","Mountain fold (away)"),
                      ("none","Crease / reference")]:
         _draw_fold_line(d,(x,y+8),(x+80,y+8),ft,P,width=2)
-        d.text((x+90,y),label,font=FONTS["tiny"],fill=h2r(P["td"]))); y+=22
+        d.text((x+90,y),label,font=FONTS["tiny"],fill=h2r(P["td"])); y+=22
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  BLUEPRINT PAGES
